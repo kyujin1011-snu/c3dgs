@@ -1,4 +1,4 @@
-# %%
+# %% 시작작
 import gc
 import json
 import os
