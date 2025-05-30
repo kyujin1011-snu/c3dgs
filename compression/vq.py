@@ -160,6 +160,20 @@ def compress_color(
 
     vq_mask_c = ~keep_mask
 
+    ######################################
+    # 균등분포 난수 생성
+    rand_vals = torch.rand_like(vq_mask_c.float())
+
+    # 20% 구제: 값이 0.8 이상인 애들만 구제 (== True로 바꿔줌)
+    rescue_mask = (rand_vals > 0.8) & vq_mask_c
+
+    # keep_mask에 추가
+    keep_mask = keep_mask | rescue_mask  # OR 연산
+
+    # vq_mask_c도 업데이트하려면 다시 계산
+    vq_mask_c = ~keep_mask
+    ######################################
+
     # remove zero sh component
     if color_compress_non_dir:
         n_sh_coefs = gaussians.get_features.shape[1]
@@ -176,6 +190,7 @@ def compress_color(
             color_comp.batch_size,
             color_comp.steps,
         )
+    #아래 else는 사실상 하나마나한 코드, 무시해도됨.
     else:
         color_codebook = torch.empty(
             (0, color_features.shape[-1]), device=color_features.device
@@ -183,7 +198,7 @@ def compress_color(
         color_vq_indices = torch.empty(
             (0,), device=color_features.device, dtype=torch.long
         )
-
+    
     all_features = color_features
     compressed_features, indices = join_features(
         all_features, keep_mask, color_codebook, color_vq_indices
@@ -200,6 +215,20 @@ def compress_covariance(
     keep_mask_g = gaussian_importance > gaussian_comp.importance_include
 
     vq_mask_g = ~keep_mask_g
+
+    ######################################
+    # 균등분포 난수 생성
+    rand_vals = torch.rand_like(vq_mask_g.float())
+
+    # 20% 구제: 값이 0.8 이상인 애들만 구제 (== True로 바꿔줌)
+    rescue_mask = (rand_vals > 0.8) & vq_mask_g
+
+    # keep_mask에 추가
+    keep_mask_g = keep_mask_g | rescue_mask  # OR 연산
+
+    # vq_mask_c도 업데이트하려면 다시 계산
+    vq_mask_g = ~keep_mask_g
+    ######################################
 
     print(f"gaussians keep: {keep_mask_g.float().mean()*100:.2f}%")
 
@@ -249,6 +278,21 @@ def compress_gaussians(
     with torch.no_grad():
         if prune_threshold >= 0:
             non_prune_mask = color_importance > prune_threshold
+
+            ##################################
+            prune_mask = ~non_prune_mask
+
+            # 균등분포 난수 생성 (prune_mask와 같은 크기)
+            rand_vals = torch.rand_like(prune_mask.float())
+
+            # 0.8 이하인 것만 유지 (prune 유지)
+            prune_keep = (rand_vals <= 0.8) & prune_mask
+
+            # 0.8 초과인 것은 non_prune_mask로 옮김
+            non_prune_add = (rand_vals > 0.8) & prune_mask
+            non_prune_mask = non_prune_mask | non_prune_add  # OR 연산으로 살림
+            ###########################
+
             print(f"prune: {(1-non_prune_mask.float().mean())*100:.2f}%")
             gaussians.mask_splats(non_prune_mask)
             gaussian_importance = gaussian_importance[non_prune_mask]

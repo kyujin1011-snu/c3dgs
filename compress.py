@@ -36,10 +36,11 @@ def unique_output_folder():
         unique_str = str(uuid.uuid4())
     return os.path.join("./output_vq/", unique_str[0:10])
 
-
+#이게 importance 계산함수수
 def calc_importance(
     gaussians: GaussianModel, scene, pipeline_params
 ) -> Tuple[torch.Tensor, torch.Tensor]:
+    #이 아래가 아마 cov importance
     scaling = gaussians.scaling_qa(
         gaussians.scaling_activation(gaussians._scaling.detach())
     )
@@ -49,12 +50,12 @@ def calc_importance(
     scaling_factor = gaussians.scaling_factor_activation(
         gaussians.scaling_factor_qa(gaussians._scaling_factor.detach())
     )
-
+    #이게 color importance
     h1 = gaussians._features_dc.register_hook(lambda grad: grad.abs())
     h2 = gaussians._features_rest.register_hook(lambda grad: grad.abs())
     h3 = cov3d.register_hook(lambda grad: grad.abs())
     background = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32, device="cuda")
-
+    
     gaussians._features_dc.grad = None
     gaussians._features_rest.grad = None
     num_pixels = 0
@@ -68,7 +69,7 @@ def calc_importance(
             clamp_color=False,
             cov3d=cov3d_scaled,
         )["render"]
-        loss = rendering.sum()
+        loss = rendering.sum() #loss는 render된 픽셀값의 총합합
         loss.backward()
         num_pixels += rendering.shape[1]*rendering.shape[2]
 
@@ -203,7 +204,7 @@ def run_vq(
         os.path.join(comp_params.output_vq, "cfg_args_comp"), "w"
     ) as cfg_log_f:
         cfg_log_f.write(str(Namespace(**vars(comp_params))))
-
+    #아래는 fine tune 인듯듯
     iteration = scene.loaded_iter + comp_params.finetune_iterations
     if comp_params.finetune_iterations > 0:
 
