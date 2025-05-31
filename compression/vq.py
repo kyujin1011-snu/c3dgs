@@ -159,7 +159,7 @@ def compress_color(
     )
 
     vq_mask_c = ~keep_mask
-
+    '''
     ######################################
     # 균등분포 난수 생성
     rand_vals = torch.rand_like(vq_mask_c.float())
@@ -173,7 +173,7 @@ def compress_color(
     # vq_mask_c도 업데이트하려면 다시 계산
     vq_mask_c = ~keep_mask
     ######################################
-
+    '''
     # remove zero sh component
     if color_compress_non_dir:
         n_sh_coefs = gaussians.get_features.shape[1]
@@ -206,6 +206,7 @@ def compress_color(
 
     gaussians.set_color_indexed(compressed_features.reshape(-1, n_sh_coefs, 3), indices)
 
+'''
 def compress_covariance(
     gaussians: GaussianModel,
     gaussian_importance: torch.Tensor,
@@ -215,7 +216,7 @@ def compress_covariance(
     keep_mask_g = gaussian_importance > gaussian_comp.importance_include
 
     vq_mask_g = ~keep_mask_g
-
+    
     ######################################
     # 균등분포 난수 생성
     rand_vals = torch.rand_like(vq_mask_g.float())
@@ -229,7 +230,7 @@ def compress_covariance(
     # vq_mask_c도 업데이트하려면 다시 계산
     vq_mask_g = ~keep_mask_g
     ######################################
-
+    
     print(f"gaussians keep: {keep_mask_g.float().mean()*100:.2f}%")
 
     covariance = gaussians.get_normalized_covariance(strip_sym=True).detach()
@@ -244,12 +245,14 @@ def compress_covariance(
             gaussian_comp.steps,
             scale_normalize=True,
         )
+    #아래는 하나마나한 코드드
     else:
         cov_codebook = torch.empty(
             (0, covariance.shape[1], 1), device=covariance.device
         )
         cov_vq_indices = torch.empty((0,), device=covariance.device, dtype=torch.long)
-
+    #위는 필요없음
+    
     compressed_cov, cov_indices = join_features(
         covariance,
         keep_mask_g,
@@ -263,6 +266,76 @@ def compress_covariance(
         rot_vq.to(compressed_cov.device),
         scale_vq.to(compressed_cov.device),
         cov_indices,
+    )'''
+
+
+def compress_covariance(  #이거 집중 수정
+    gaussians: GaussianModel,
+    gaussian_importance: torch.Tensor,
+    gaussian_comp: CompressionSettings,
+):
+
+    keep_mask_g = gaussian_importance > gaussian_comp.importance_include
+
+    vq_mask_g = ~keep_mask_g
+    '''
+    ######################################
+    # 균등분포 난수 생성
+    rand_vals = torch.rand_like(vq_mask_g.float())
+
+    # 20% 구제: 값이 0.8 이상인 애들만 구제 (== True로 바꿔줌)
+    rescue_mask = (rand_vals > 0.8) & vq_mask_g
+
+    # keep_mask에 추가
+    keep_mask_g = keep_mask_g | rescue_mask  # OR 연산
+
+    # vq_mask_c도 업데이트하려면 다시 계산
+    vq_mask_g = ~keep_mask_g
+    ######################################
+    '''
+    print(f"gaussians keep: {keep_mask_g.float().mean()*100:.2f}%")
+
+
+    # 원본 스케일/로테이션 추출
+    rotation = gaussians.get_rotation.detach()       # (N, 4)
+    scaling = gaussians.get_norm_scaling.detach()         # (N, 3)
+
+    if vq_mask_g.any():
+        print("compressing rotation...")
+        rot_codebook, rot_vq_indices = vq_features(
+            rotation[vq_mask_g],
+            gaussian_importance[vq_mask_g],
+            gaussian_comp.codebook_size,
+            gaussian_comp.batch_size,
+            gaussian_comp.steps,
+        )
+
+        print("compressing scaling...")
+        scale_codebook, scale_vq_indices = vq_features(
+            scaling[vq_mask_g],
+            gaussian_importance[vq_mask_g],
+            gaussian_comp.codebook_size,
+            gaussian_comp.batch_size,
+            gaussian_comp.steps,
+        )
+    else:
+        rot_codebook = torch.empty((0, 4), device=rotation.device)
+        scale_codebook = torch.empty((0, 3), device=scaling.device)
+        rot_vq_indices = scale_vq_indices = torch.empty((0,), dtype=torch.long, device=rotation.device)
+
+    #위는 필요없음
+    
+    # join
+    rot_compressed, rot_indices = join_features(rotation, keep_mask_g, rot_codebook, rot_vq_indices)
+    scale_compressed, scale_indices = join_features(scaling, keep_mask_g, scale_codebook, scale_vq_indices)
+
+
+
+    gaussians.set_gaussian_indexed(
+        rot_compressed.to(rotation.device),
+        scale_compressed.to(scaling.device),
+        rot_indices,
+        scale_indices,
     )
 
 
@@ -278,7 +351,7 @@ def compress_gaussians(
     with torch.no_grad():
         if prune_threshold >= 0:
             non_prune_mask = color_importance > prune_threshold
-
+            '''
             ##################################
             prune_mask = ~non_prune_mask
 
@@ -292,7 +365,7 @@ def compress_gaussians(
             non_prune_add = (rand_vals > 0.8) & prune_mask
             non_prune_mask = non_prune_mask | non_prune_add  # OR 연산으로 살림
             ###########################
-
+            '''
             print(f"prune: {(1-non_prune_mask.float().mean())*100:.2f}%")
             gaussians.mask_splats(non_prune_mask)
             gaussian_importance = gaussian_importance[non_prune_mask]

@@ -71,6 +71,8 @@ class GaussianModel:
         # quantization related stuff
         self._feature_indices = None
         self._gaussian_indices = None
+        self._rotation_indices = None
+        self._scaling_indices = None
 
         self.quantization = quantization
         self.color_index_mode = ColorMode.NOT_INDEXED
@@ -139,7 +141,7 @@ class GaussianModel:
         self.xyz_gradient_accum = xyz_gradient_accum
         self.denom = denom
         self.optimizer.load_state_dict(opt_dict)
-
+    '''
     @property
     def get_scaling(self):
         scaling_n = self.scaling_qa(self.scaling_activation(self._scaling))
@@ -150,6 +152,25 @@ class GaussianModel:
             return scaling_factor * scaling_n[self._gaussian_indices]
         else:
             return scaling_factor * scaling_n
+    '''
+    @property
+    def get_scaling(self):
+        scaling_n = self.scaling_qa(self.scaling_activation(self._scaling))
+        scaling_factor = self.scaling_factor_activation(
+            self.scaling_factor_qa(self._scaling_factor)
+        )
+        if self._scaling_indices is not None:
+            return scaling_factor * scaling_n[self._scaling_indices]
+        return scaling_factor * scaling_n
+    
+    @property
+    def get_norm_scaling(self):
+        scaling_n = self.scaling_qa(self.scaling_activation(self._scaling))
+
+        if self._scaling_indices is not None:
+            return scaling_n[self._scaling_indices]
+        return scaling_n
+    
 
     @property
     def get_scaling_normalized(self):
@@ -160,7 +181,7 @@ class GaussianModel:
         return self.scaling_factor_activation(
             self.scaling_factor_qa(self._scaling_factor)
         )
-
+    '''
     @property
     def get_rotation(self):
         rotation = self.rotation_activation(self.rotation_qa(self._rotation))
@@ -168,7 +189,14 @@ class GaussianModel:
             return rotation[self._gaussian_indices]
         else:
             return rotation
-
+    '''
+    @property
+    def get_rotation(self):
+        rot = self.rotation_activation(self.rotation_qa(self._rotation))
+        if self.rotation_indices is not None:
+            return rot[self._rotation_indices]
+        return rot
+    
     @property
     def _rotation_post_activation(self):
         return self.rotation_activation(self.rotation_qa(self._rotation))
@@ -515,11 +543,67 @@ class GaussianModel:
                 save_dict["feature_indices"] = (
                     self._feature_indices.detach().contiguous().cpu().int().numpy()
                 )
-            if self.is_gaussian_indexed:
-                save_dict["gaussian_indices"] = (
-                    self._gaussian_indices.detach().contiguous().cpu().int().numpy()
+            if self._scaling_indices is not None:
+                save_dict["scaling_indices"] = (
+                    self._scaling_indices.detach().contiguous().cpu().int().numpy()
                 )
+            if self._rotation_indices is not None:
+                save_dict["rotation_indices"] = (
+                    self._rotation_indices.detach().contiguous().cpu().int().numpy()
+                )
+            '''
+            # save scaling
+            if self.quantization:
+                scaling = self.scaling_activation(self._scaling.detach())
+                scaling_q = torch.quantize_per_tensor(
+                    scaling,
+                    scale=self.scaling_qa.scale,
+                    zero_point=self.scaling_qa.zero_point,
+                    dtype=self.scaling_qa.dtype,
+                ).int_repr()
+                save_dict["scaling"] = scaling_q.cpu().numpy()
+                save_dict["scaling_scale"] = self.scaling_qa.scale.cpu().numpy()
+                save_dict[
+                    "scaling_zero_point"
+                ] = self.scaling_qa.zero_point.cpu().numpy()
 
+                scaling_factor = self._scaling_factor.detach()
+                scaling_factor_q = torch.quantize_per_tensor(
+                    scaling_factor,
+                    scale=self.scaling_factor_qa.scale,
+                    zero_point=self.scaling_factor_qa.zero_point,
+                    dtype=self.scaling_factor_qa.dtype,
+                ).int_repr()
+                save_dict["scaling_factor"] = scaling_factor_q.cpu().numpy()
+                save_dict[
+                    "scaling_factor_scale"
+                ] = self.scaling_factor_qa.scale.cpu().numpy()
+                save_dict[
+                    "scaling_factor_zero_point"
+                ] = self.scaling_factor_qa.zero_point.cpu().numpy()
+            else:
+                save_dict["scaling"] = self._scaling.detach().to(dtype).cpu().numpy()
+                save_dict["scaling_factor"] = (
+                    self._scaling_factor.detach().to(dtype).cpu().numpy()
+                )
+            # save rotation
+            if self.quantization:
+                rotation = self.rotation_activation(self._rotation).detach()
+                rotation_q = torch.quantize_per_tensor(
+                    rotation,
+                    scale=self.rotation_qa.scale,
+                    zero_point=self.rotation_qa.zero_point,
+                    dtype=self.rotation_qa.dtype,
+                ).int_repr()
+                save_dict["rotation"] = rotation_q.cpu().numpy()
+                save_dict["rotation_scale"] = self.rotation_qa.scale.cpu().numpy()
+                save_dict[
+                    "rotation_zero_point"
+                ] = self.rotation_qa.zero_point.cpu().numpy()
+            else:
+                save_dict["rotation"] = self._rotation.detach().to(dtype).cpu().numpy()
+
+            '''
             # save scaling
             if self.quantization:
                 scaling = self.scaling_activation(self._scaling.detach())
@@ -799,13 +883,25 @@ class GaussianModel:
         self._features_rest = nn.Parameter(features[:, 1:].detach(), requires_grad=True)
         self.color_index_mode = ColorMode.ALL_INDEXED
 
+    '''
     def set_gaussian_indexed(
         self, rotation: torch.Tensor, scaling: torch.Tensor, indices: torch.Tensor
     ):
         self._gaussian_indices = nn.Parameter(indices.detach(), requires_grad=False)
         self._rotation = nn.Parameter(rotation.detach(), requires_grad=True)
         self._scaling = nn.Parameter(scaling.detach(), requires_grad=True)
-
+    '''
+    def set_gaussian_indexed( #########새롭게게
+        self,
+        rotation: torch.Tensor,
+        scaling: torch.Tensor,
+        rotation_indices: torch.Tensor,
+        scaling_indices: torch.Tensor,
+    ):
+        self._rotation = nn.Parameter(rotation.detach(), requires_grad=True)
+        self._scaling = nn.Parameter(scaling.detach(), requires_grad=True)
+        self._rotation_indices = nn.Parameter(rotation_indices.detach(), requires_grad=False)
+        self._scaling_indices = nn.Parameter(scaling_indices.detach(), requires_grad=False)
 
 class FakeQuantizationHalf(torch.autograd.Function):
     """performs fake quantization for half precision"""
