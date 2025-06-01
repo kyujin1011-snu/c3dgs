@@ -205,6 +205,11 @@ def run_vq(
     ) as cfg_log_f:
         cfg_log_f.write(str(Namespace(**vars(comp_params))))
     #아래는 fine tune 인듯듯
+        # eval model
+    print("evaluating...")
+    metrics = render_and_eval(gaussians, scene, model_params, pipeline_params)
+    #metrics["size"] = file_size
+    print(metrics)
     iteration = scene.loaded_iter + comp_params.finetune_iterations
     if comp_params.finetune_iterations > 0:
 
@@ -224,24 +229,24 @@ def run_vq(
         timings["finetune"]=end_time-start_time
 
         # %%
-    out_file = path.join(
-        comp_params.output_vq,
-        f"point_cloud/iteration_{iteration}/point_cloud.npz",
-    )
-    start_time = time.time()
-    gaussians.save_npz(out_file, sort_morton=not comp_params.not_sort_morton)
-    end_time = time.time()
-    timings["encode"]=end_time-start_time
-    timings["total"]=sum(timings.values())
-    with open(f"{comp_params.output_vq}/times.json","w") as f:
-        json.dump(timings,f)
-    file_size = os.path.getsize(out_file) / 1024**2
-    print(f"saved vq finetuned model to {out_file}")
+    #out_file = path.join(
+    #    comp_params.output_vq,
+    #    f"point_cloud/iteration_{iteration}/point_cloud.npz",
+    #)
+    #start_time = time.time()
+    #gaussians.save_npz(out_file, sort_morton=not comp_params.not_sort_morton)
+    #end_time = time.time()
+    #timings["encode"]=end_time-start_time
+    #timings["total"]=sum(timings.values())
+    #with open(f"{comp_params.output_vq}/times.json","w") as f:
+    #    json.dump(timings,f)
+    #file_size = os.path.getsize(out_file) / 1024**2
+    #print(f"saved vq finetuned model to {out_file}")
 
     # eval model
     print("evaluating...")
     metrics = render_and_eval(gaussians, scene, model_params, pipeline_params)
-    metrics["size"] = file_size
+    #metrics["size"] = file_size
     print(metrics)
     with open(f"{comp_params.output_vq}/results.json","w") as f:
         json.dump({f"ours_{iteration}":metrics},f,indent=4)

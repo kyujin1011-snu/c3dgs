@@ -170,7 +170,7 @@ class GaussianModel:
         if self._scaling_indices is not None:
             return scaling_n[self._scaling_indices]
         return scaling_n
-    
+
 
     @property
     def get_scaling_normalized(self):
@@ -193,7 +193,7 @@ class GaussianModel:
     @property
     def get_rotation(self):
         rot = self.rotation_activation(self.rotation_qa(self._rotation))
-        if self.rotation_indices is not None:
+        if self._rotation_indices is not None:
             return rot[self._rotation_indices]
         return rot
     
