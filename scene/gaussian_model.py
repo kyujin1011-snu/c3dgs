@@ -164,13 +164,19 @@ class GaussianModel:
         return scaling_factor * scaling_n
     
     @property
+    def get_degree_scaling(self):
+        scaling_n = self.scaling_qa(self.scaling_activation(self._scaling))  # (N, 3)
+        theta = torch.atan2(scaling_n[:, 1], scaling_n[:, 0])  # (N,)
+        phi = torch.acos(torch.clamp(scaling_n[:, 2], -0.9999999, 0.9999999))  # (N,)
+        return torch.stack([theta, phi], dim=1)  # shape: (N, 2)
+    
+    @property
     def get_norm_scaling(self):
         scaling_n = self.scaling_qa(self.scaling_activation(self._scaling))
 
         if self._scaling_indices is not None:
             return scaling_n[self._scaling_indices]
         return scaling_n
-
 
     @property
     def get_scaling_normalized(self):
