@@ -299,7 +299,7 @@ def compress_covariance(  #이거 집중 수정
     # 원본 스케일/로테이션 추출
     rotation = gaussians.get_rotation.detach()       # (N, 4)
     scale_degree = gaussians.get_degree_scaling.detach()         # (N, 2)
-    scaling=gaussians.get_norm_scaling().detach()
+    scaling=gaussians.get_norm_scaling.detach()
 
 
     if vq_mask_g.any():
