@@ -72,7 +72,7 @@ class CompressionParams(ParamGroup):
         self.finetune_iterations = 5000
 
         self.color_codebook_size = 2**12
-        self.color_importance_include = 0 #0.6*1e-6
+        self.color_importance_include = 0.6*1e-6
         self.color_importance_prune = 0.0
         self.color_cluster_iterations = 100
         self.color_decay = 0.8
