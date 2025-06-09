@@ -298,9 +298,7 @@ def compress_covariance(  #이거 집중 수정
 
     # 원본 스케일/로테이션 추출
     rotation = gaussians.get_rotation.detach()       # (N, 4)
-    scale_degree = gaussians.get_degree_scaling.detach()         # (N, 2)
-    scaling=gaussians.get_norm_scaling.detach()
-
+    scaling = gaussians.get_norm_scaling.detach()         # (N, 3)
 
     if vq_mask_g.any():
         print("compressing rotation...")
@@ -313,23 +311,13 @@ def compress_covariance(  #이거 집중 수정
         )
 
         print("compressing scaling...")
-        scale_degree_codebook, scale_degree_vq_indices = vq_features(
-            scale_degree[vq_mask_g],
+        scale_codebook, scale_vq_indices = vq_features(
+            scaling[vq_mask_g],
             gaussian_importance[vq_mask_g],
             gaussian_comp.codebook_size,
             gaussian_comp.batch_size,
             gaussian_comp.steps,
         )
-
-        scale_vq_indices=scale_degree_vq_indices
-
-        theta, phi = scale_degree_codebook[:, 0], scale_degree_codebook[:, 1]
-        scale_codebook = torch.stack([
-            torch.sin(phi) * torch.cos(theta),
-            torch.sin(phi) * torch.sin(theta),
-            torch.cos(phi)
-        ], dim=1)  # shape: (K, 3)
-
     else:
         rot_codebook = torch.empty((0, 4), device=rotation.device)
         scale_codebook = torch.empty((0, 3), device=scaling.device)
