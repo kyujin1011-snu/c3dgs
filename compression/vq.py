@@ -178,6 +178,8 @@ def compress_color(
     if color_compress_non_dir:
         n_sh_coefs = gaussians.get_features.shape[1]
         color_features = gaussians.get_features.detach().flatten(-2)
+        print(gaussians.get_dc_features.shape)
+        print(gaussians.get_rest_features.shape)
         color_dc_coefs =gaussians.get_dc_features.shape[1]
         color_dc_features = gaussians.get_dc_features.detach().flatten(-2)
         color_rest_coefs =gaussians.get_rest_features.shape[1]
@@ -226,11 +228,13 @@ def compress_color(
         all_features, keep_mask, color_codebook, color_vq_indices
     )
     '''
+    all_dc_features=color_dc_features
     compressed_dc_features, dc_indices = join_features(
-        color_dc_features, keep_mask, color_dc_codebook, color_dc_vq_indices
+        all_dc_features, keep_mask, color_dc_codebook, color_dc_vq_indices
     )
+    all_rest_features=color_rest_features
     compressed_rest_features, rest_indices = join_features(
-        color_rest_features, keep_mask, color_rest_codebook, color_rest_vq_indices
+        all_rest_features, keep_mask, color_rest_codebook, color_rest_vq_indices
     )
 
     #gaussians.set_color_indexed(compressed_features.reshape(-1, n_sh_coefs, 3), indices)

@@ -69,7 +69,7 @@ class GaussianModel:
         self.spatial_lr_scale = 0
 
         # quantization related stuff
-        #self._feature_indices = None
+        self._feature_indices = None
         self._feature_dc_indices = None
         self._feature_rest_indices = None
         self._gaussian_indices = None
@@ -213,6 +213,7 @@ class GaussianModel:
         features_rest = self.features_rest_qa(self._features_rest)
 
         if self.color_index_mode == ColorMode.ALL_INDEXED:
+            #return torch.cat((features_dc, features_rest), dim=1)[self._feature_indices]
             return torch.cat((features_dc[self._feature_dc_indices],features_rest[self._feature_rest_indices]), dim=1)
         else:
             return torch.cat((features_dc, features_rest), dim=1)
@@ -900,7 +901,7 @@ class GaussianModel:
 
     def set_color_rest_indexed(self, features: torch.Tensor, indices: torch.Tensor):
         self._feature_rest_indices = nn.Parameter(indices, requires_grad=False)
-        self._features_rest = nn.Parameter(features[:, 1:].detach(), requires_grad=True)
+        self._features_rest = nn.Parameter(features[:, 0:].detach(), requires_grad=True)
         self.color_index_mode = ColorMode.ALL_INDEXED
     '''
     def set_gaussian_indexed(
