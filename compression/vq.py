@@ -178,11 +178,16 @@ def compress_color(
     if color_compress_non_dir:
         n_sh_coefs = gaussians.get_features.shape[1]
         color_features = gaussians.get_features.detach().flatten(-2)
+        color_dc_coefs =gaussians.get_dc_features.shape[1]
+        color_dc_features = gaussians.get_dc_features.detach().flatten(-2)
+        color_rest_coefs =gaussians.get_rest_features.shape[1]
+        color_rest_features = gaussians.get_rest_features.detach().flatten(-2)
     else:
         n_sh_coefs = gaussians.get_features.shape[1] - 1
         color_features = gaussians.get_features[:, 1:].detach().flatten(-2)
     if vq_mask_c.any():
         print("compressing color...")
+        '''
         color_codebook, color_vq_indices = vq_features(
             color_features[vq_mask_c],
             color_importance[vq_mask_c],
@@ -190,21 +195,47 @@ def compress_color(
             color_comp.batch_size,
             color_comp.steps,
         )
+        '''
+        color_dc_codebook, color_dc_vq_indices = vq_features(
+            color_dc_features[vq_mask_c],
+            color_importance[vq_mask_c],
+            color_comp.codebook_size,
+            color_comp.batch_size,
+            color_comp.steps,
+        )
+        color_rest_codebook, color_rest_vq_indices = vq_features(
+            color_rest_features[vq_mask_c],
+            color_importance[vq_mask_c],
+            color_comp.codebook_size, 
+            color_comp.batch_size,
+            color_comp.steps,
+        )
     #아래 else는 사실상 하나마나한 코드, 무시해도됨.
     else:
+        '''
         color_codebook = torch.empty(
             (0, color_features.shape[-1]), device=color_features.device
         )
         color_vq_indices = torch.empty(
             (0,), device=color_features.device, dtype=torch.long
         )
-    
+        '''
+    '''
     all_features = color_features
     compressed_features, indices = join_features(
         all_features, keep_mask, color_codebook, color_vq_indices
     )
+    '''
+    compressed_dc_features, dc_indices = join_features(
+        color_dc_features, keep_mask, color_dc_codebook, color_dc_vq_indices
+    )
+    compressed_rest_features, rest_indices = join_features(
+        color_rest_features, keep_mask, color_rest_codebook, color_rest_vq_indices
+    )
 
-    gaussians.set_color_indexed(compressed_features.reshape(-1, n_sh_coefs, 3), indices)
+    #gaussians.set_color_indexed(compressed_features.reshape(-1, n_sh_coefs, 3), indices)
+    gaussians.set_color_dc_indexed(compressed_dc_features.reshape(-1, color_dc_coefs, 3), dc_indices)
+    gaussians.set_color_rest_indexed(compressed_rest_features.reshape(-1, color_rest_coefs, 3), rest_indices)
 
 '''
 def compress_covariance(
