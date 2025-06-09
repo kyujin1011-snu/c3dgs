@@ -210,6 +210,7 @@ def run_vq(
     metrics = render_and_eval(gaussians, scene, model_params, pipeline_params)
     #metrics["size"] = file_size
     print(metrics)
+    '''
     iteration = scene.loaded_iter + comp_params.finetune_iterations
     if comp_params.finetune_iterations > 0:
 
@@ -227,7 +228,7 @@ def run_vq(
         )
         end_time = time.time()
         timings["finetune"]=end_time-start_time
-
+    '''
         # %%
     #out_file = path.join(
     #    comp_params.output_vq,
